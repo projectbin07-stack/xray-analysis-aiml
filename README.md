@@ -1,70 +1,134 @@
-# AI-Based X-Ray Intelligence & Diagnostic System
+# 🧠 AI-Based X-Ray Intelligence & Diagnostic System
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Framework-009688.svg)](https://fastapi.tiangolo.com/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-AI%20Model-EE4C2C.svg)](https://pytorch.org/)
+An AI-powered medical imaging system for automated chest X-ray analysis, providing disease prediction, risk assessment, and human-friendly clinical insights.
 
-A high-performance, product-level AI diagnostic dashboard for radiological analysis. This system leverages deep learning to provide multi-label disease prediction, risk assessment, and automated clinical interpretations of chest X-rays.
+---
 
-## Dashboard Overview
+## 🚀 Overview
+
+This project leverages deep learning to analyze chest X-ray images and identify potential abnormalities.
+It combines **multi-label classification**, **risk scoring**, and **AI-generated explanations** into an interactive web dashboard.
+
+---
+
+## ✨ Features
+
+* 🔍 **Multi-label Disease Prediction**
+  Detects multiple possible conditions from a single X-ray
+
+* ⚠️ **Risk Assessment System**
+  Classifies cases as **Normal**, **Needs Attention**, or **Critical**
+
+* 📊 **Interactive Dashboard**
+  Clean UI with predictions, confidence graphs, and insights
+
+* 🧠 **AI Clinical Explanation (Ollama)**
+  Converts technical outputs into:
+
+  * Summary
+  * Meaning
+  * Recommendation
+
+* 📈 **Model Insights**
+
+  * Prediction distribution
+  * Confidence visualization
+  * Performance graphs
+
+---
+
+## 📊 Results
+
+### 🖥️ Dashboard
 
 ![Dashboard](assets/images/dashboard.png)
 
-## Core Features
+---
 
-- **Multi-Label Pathology Prediction**: Simultaneous detection of multiple lung conditions using state-of-the-art neural architectures.
-- **Dynamic Risk Assessment**: Real-time severity scoring (0-100%) and clinical triaging (Critical/Attention/Normal).
-- **AI Clinical Explanation**: Automated medical report generation powered by Llama3 (Ollama) for summary and interpretation.
-- **Interactive Analytics**: Real-time confidence distribution charts and abnormality scoring.
-- **Model Reliability Tracking**: Integrated performance metrics including accuracy/loss trends and confusion matrices.
-- **Radiological Enhancement**: Specialized filters for AI-enhanced viewing of radiological findings.
+### 🧪 Sample Outputs
+
+| Sample 1                        | Sample 2                        |
+| ------------------------------- | ------------------------------- |
+| ![](assets/images/1st test.png) | ![](assets/images/2nd test.png) |
 
 ---
 
-## Sample Analysis Results
+## 🧠 Model Details
 
-| Sample 1 (Pathology Detected) | Sample 2 (Normal Baseline) |
-|------------------------------|---------------------------|
-| ![](assets/images/sample1.png) | ![](assets/images/sample2.png) |
-
----
-
-## Technical Specifications
-
-### AI Model Architecture
-- **Framework**: PyTorch + TorchXRayVision
-- **Core Model**: DenseNet121 Optimized for Radiological Features
-- **Classification**: Multi-label classification with specialized weights
-- **Dataset**: Pretrained on large-scale clinical medical datasets (ChestX-ray14)
-
-### Technology Stack
-- **Backend**: FastAPI (Python)
-- **Frontend**: Modern Vanilla JS, Chart.js, Plus Jakarta Sans Typography
-- **Inference Engine**: TorchXRayVision (X-Ray pathology) + Ollama (Report generation)
-- **Image Processing**: OpenCV / Pillow
+* **Architecture:** DenseNet121
+* **Framework:** PyTorch + TorchXRayVision
+* **Type:** Multi-label classification
+* **Input:** Chest X-ray images
 
 ---
 
-## How to Run
+## ⚙️ How to Run
 
-1. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+python app.py
+```
 
-2. **Run Application**:
-   ```bash
-   python app.py
-   ```
+Open in browser:
 
-3. **Access Dashboard**:
-   Open [http://127.0.0.1:8001](http://127.0.0.1:8001) in your browser.
+```bash
+http://127.0.0.1:8001
+```
 
 ---
 
-## Professional Disclaimer
+## 🛠️ Tech Stack
 
-**Research & Educational Use Only**: This project is intended for research and educational purposes only. It is not intended for use in actual medical diagnosis or treatment. All findings should be verified by a certified healthcare professional.
+* Python
+* FastAPI
+* PyTorch
+* TorchXRayVision
+* OpenCV
+* Chart.js
+* Ollama
 
 ---
-*Developed with focus on AI transparency and high-fidelity medical UX.*
+
+## 📁 Project Structure
+
+```
+xray/
+│
+├── app.py
+├── core/
+├── templates/
+├── static/
+├── assets/images/
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## ⚠️ Disclaimer
+
+This project is intended for **research and educational purposes only**.
+It is **not a substitute for professional medical diagnosis**.
+
+---
+
+## 💡 Future Improvements
+
+* Improved model accuracy with custom training
+* Support for additional imaging modalities
+* Real-time clinical deployment
+* Mobile-friendly interface
+
+---
+
+## 👨‍💻 Author
+
+**Navaneeth KG**
+Embedded Systems & AI Developer
+Founder — Indionics
+
+---
+
+## ⭐ If you like this project
+
+Give it a star ⭐ and support the work!
