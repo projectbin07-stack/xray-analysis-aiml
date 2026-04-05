@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+torch
+torchxrayvision
+opencv-python
+numpy
+requests
+python-multipart
+jinja2

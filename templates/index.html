@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XRAY Intelligence Dashboard | Professional AI Diagnostics</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="dashboard-wrapper">
+    <!-- Top Bar -->
+    <header class="top-bar">
+        <div class="brand">
+            <span class="pulse-icon"></span>
+            <h1>XRAY <span class="thin">INTELLIGENCE</span> DASHBOARD <span class="v-tag">v2.4 PRO</span></h1>
+        </div>
+        <div class="actions">
+            <div class="system-status">
+                <span class="dot"></span> System Online
+            </div>
+            <button class="btn-upload" onclick="document.getElementById('fileInput').click()">
+                <span class="icon">📁</span> NEW ANALYSIS
+            </button>
+            <input type="file" id="fileInput" accept="image/*" hidden>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Left Panel: Large Image -->
+        <section class="image-panel">
+            <div class="image-container card">
+                <div class="card-header-overlay">
+                    <span class="view-label">Analyzed X-ray Scan</span>
+                    <span id="scanTimestamp" class="timestamp">Awaiting Input...</span>
+                </div>
+                <div id="imagePlaceholder" class="placeholder">
+                    <div class="upload-area" id="dropZone">
+                        <div class="upload-icon">📸</div>
+                        <p>Drop X-ray scan here or click to browse</p>
+                        <span class="hint">Supports JPG, PNG, DICOM</span>
+                    </div>
+                </div>
+                <div id="previewWrapper" class="preview-wrapper hidden">
+                    <img id="previewImage" src="" alt="X-ray Analysis">
+                    <div class="scan-line"></div>
+                    <div class="focus-reticle"></div>
+                </div>
+                <div id="loadingOverlay" class="loading-overlay hidden">
+                    <div class="loader-box">
+                        <div class="loader"></div>
+                        <div class="loading-steps">
+                            <span id="step1">Extracting Features...</span>
+                            <span id="step2" class="dim">Neural Mapping...</span>
+                            <span id="step3" class="dim">Clinical Matching...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-controls">
+                <button class="btn-toggle active" data-view="original">ORIGINAL SCAN</button>
+                <button class="btn-toggle" data-view="analysis">AI ENHANCED</button>
+            </div>
+
+            <!-- New Section: Model Performance (Portfolio) -->
+            <div class="performance-section card">
+                <div class="card-title-row">
+                    <h3>MODEL PERFORMANCE & RELIABILITY</h3>
+                    <span class="badge-outline">Stable v2.4</span>
+                </div>
+                <div class="performance-grid">
+                    <div class="perf-item">
+                        <label>Accuracy Trend</label>
+                        <div class="mini-chart"><canvas id="accuracyChart"></canvas></div>
+                    </div>
+                    <div class="perf-item">
+                        <label>Loss Convergence</label>
+                        <div class="mini-chart"><canvas id="lossChart"></canvas></div>
+                    </div>
+                    <div class="perf-item">
+                        <label>Confusion Matrix</label>
+                        <div class="matrix-viz">
+                            <div class="m-cell active" title="TP">94%</div>
+                            <div class="m-cell" title="FP">2%</div>
+                            <div class="m-cell" title="FN">4%</div>
+                            <div class="m-cell active" title="TN">90%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Stacked Cards -->
+        <aside class="metrics-panel">
+            <!-- Risk Intelligence Card -->
+            <div class="card risk-card highlight-card">
+                <div class="card-label">RISK INTELLIGENCE SCORE</div>
+                <div class="risk-main">
+                    <div class="risk-display">
+                        <span id="riskValue">--</span>
+                        <small>%</small>
+                    </div>
+                    <div class="status-badge" id="statusBadge">AWAITING</div>
+                </div>
+                <div class="progress-container">
+                    <div id="riskProgress" class="progress-bar" style="width: 0%"></div>
+                </div>
+                <p id="riskExplanation" class="risk-explanation">Upload scan to calculate pathology severity.</p>
+            </div>
+
+            <!-- Advanced Analytics Card (New) -->
+            <div class="card analytics-card">
+                <div class="card-title">DIAGNOSTIC ANALYTICS</div>
+                <div class="analytics-metrics">
+                    <div class="a-metric">
+                        <span class="a-label">Dominant</span>
+                        <span class="a-value" id="dominantCond">None</span>
+                    </div>
+                    <div class="a-metric">
+                        <span class="a-label">Confidence</span>
+                        <span class="a-value" id="confConsistency">--</span>
+                    </div>
+                    <div class="a-metric">
+                        <span class="a-label">Abnormality</span>
+                        <span class="a-value" id="mAbnormality">0.0</span>
+                    </div>
+                </div>
+                <div class="a-summary" id="aSummaryText">Ready for medical data ingestion...</div>
+            </div>
+
+            <!-- Graph Card: Top Predictions (Improved) -->
+            <div class="card graph-card">
+                <div class="card-title">PATHOLOGY DISTRIBUTION</div>
+                <div class="chart-container">
+                    <canvas id="predictionChart"></canvas>
+                </div>
+                <div class="top-predictions-list" id="topPredList">
+                    <!-- Dynamic entries with bars -->
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Bottom Section: AI Explanation (Upgraded) -->
+    <footer class="bottom-section">
+        <div class="card explanation-card">
+            <div class="card-header-row">
+                <div class="card-title">AI CLINICAL EXPLANATION & INTERPRETATION</div>
+                <div class="clinical-sign">Certified Diagnostic Output</div>
+            </div>
+            <div class="explanation-grid">
+                <div class="exp-block">
+                    <div class="exp-header">
+                        <span class="exp-icon summary">📝</span>
+                        <h4>CLINICAL SUMMARY</h4>
+                    </div>
+                    <div class="exp-content" id="expSummary">Scan an image to generate automated clinical summary...</div>
+                </div>
+                <div class="exp-block">
+                    <div class="exp-header">
+                        <span class="exp-icon meaning">🧠</span>
+                        <h4>INTERPRETATION</h4>
+                    </div>
+                    <div class="exp-content" id="expMeaning">Deep neural interpretation of radiological findings will appear here.</div>
+                </div>
+                <div class="exp-block">
+                    <div class="exp-header">
+                        <span class="exp-icon recommendation">👨‍⚕️</span>
+                        <h4>RECOMMENDED ACTION</h4>
+                    </div>
+                    <div class="exp-content" id="expRecommendation">Actionable next steps based on AI diagnostic confidence.</div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
