@@ -70,7 +70,7 @@ This system solves that by:
 * Classified as **Needs Attention**
 * AI suggests further clinical evaluation
 
-![Sample 1](assets/images/1st test.png)
+![Sample 1](assets/images/1st-test.png)
 
 ---
 
@@ -80,7 +80,7 @@ This system solves that by:
 * Classified as **Critical**
 * Immediate medical consultation recommended
 
-![Sample 2](assets/images/2nd test.png)
+![Sample 2](assets/images/2nd-test.png)
 
 ---
 
