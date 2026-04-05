@@ -7,3 +7,4 @@ static/uploads/*
 .vscode/
 *.log
 .env
+venv/
