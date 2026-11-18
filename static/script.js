@@ -1,9 +1,6 @@
 let predictionChart;
-let accuracyChart;
-let lossChart;
 
 document.addEventListener('DOMContentLoaded', () => {
-    initPerformanceCharts();
     setupEventListeners();
 });
 
@@ -83,7 +80,7 @@ async function analyzeXray(file) {
         }
     } catch (err) {
         console.error(err);
-        alert('Diagnostic System Offline');
+        alert('Could not reach the analysis server.');
     } finally {
         setTimeout(() => {
             loading.classList.add('hidden');
@@ -112,20 +109,20 @@ function updateDashboard(data) {
     metricsPanel.classList.remove('critical', 'attention', 'normal');
     if (data.status === 'CRITICAL') {
         metricsPanel.classList.add('critical');
-        riskExplanation.innerText = "High-confidence detection of critical pathology. Immediate clinical intervention required.";
+        riskExplanation.innerText = "The highest model score is above 70%. This is a model output, not a diagnosis: a qualified clinician must review the image.";
     } else if (data.status === 'NEEDS ATTENTION') {
         metricsPanel.classList.add('attention');
-        riskExplanation.innerText = "Secondary indicators detected. Correlation with patient history and symptoms advised.";
+        riskExplanation.innerText = "The highest model score is between 40% and 70%. This is a model output, not a diagnosis.";
     } else {
         metricsPanel.classList.add('normal');
-        riskExplanation.innerText = "Neural analysis indicates physiological baseline within normal radiological limits.";
+        riskExplanation.innerText = "No pathology score is above 40%. This does not rule out disease.";
     }
 
     // Analytics Card
     document.getElementById('dominantCond').innerText = topPred.disease;
     document.getElementById('confConsistency').innerText = riskScore > 85 ? "High" : riskScore > 60 ? "Moderate" : "Low";
     document.getElementById('mAbnormality').innerText = (riskScore / 10).toFixed(1);
-    document.getElementById('aSummaryText').innerText = `AI model has ${riskScore}% confidence in ${topPred.disease} detection. Findings are consistent with radiological patterns.`;
+    document.getElementById('aSummaryText').innerText = `Highest model score: ${topPred.disease} at ${riskScore}%. Scores are uncalibrated outputs of a pretrained model.`;
 
     // Predictions List & Chart
     updatePredictionsUI(data);
@@ -188,36 +185,5 @@ function updateChart(labels, scores) {
                 y: { grid: { display: false }, ticks: { color: '#f0f6fc', font: { size: 9 } } }
             }
         }
-    });
-}
-
-function initPerformanceCharts() {
-    const ctxAcc = document.getElementById('accuracyChart').getContext('2d');
-    const ctxLoss = document.getElementById('lossChart').getContext('2d');
-
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { display: false }, y: { display: false } },
-        elements: { point: { radius: 0 }, line: { tension: 0.4, borderWidth: 2 } }
-    };
-
-    accuracyChart = new Chart(ctxAcc, {
-        type: 'line',
-        data: {
-            labels: [1,2,3,4,5,6,7],
-            datasets: [{ data: [88, 90, 89, 92, 94, 93, 95], borderColor: '#3fb950', fill: true, backgroundColor: 'rgba(63, 185, 80, 0.05)' }]
-        },
-        options: commonOptions
-    });
-
-    lossChart = new Chart(ctxLoss, {
-        type: 'line',
-        data: {
-            labels: [1,2,3,4,5,6,7],
-            datasets: [{ data: [0.4, 0.35, 0.32, 0.25, 0.18, 0.15, 0.12], borderColor: '#f85149', fill: true, backgroundColor: 'rgba(248, 81, 73, 0.05)' }]
-        },
-        options: commonOptions
     });
 }

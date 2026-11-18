@@ -248,3 +248,12 @@ body {
 .loader { width: 40px; height: 40px; border: 3px solid var(--accent-blue); border-bottom-color: transparent; border-radius: 50%; animation: rotation 1s linear infinite; margin: 0 auto 15px; }
 .loading-steps { display: flex; flex-direction: column; gap: 5px; font-size: 0.7rem; color: var(--text-primary); }
 @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.research-notice {
+    margin: 0 0 12px;
+    padding: 8px 14px;
+    border: 1px solid #d29922;
+    border-radius: 8px;
+    color: #d29922;
+    font-size: 0.8rem;
+}
