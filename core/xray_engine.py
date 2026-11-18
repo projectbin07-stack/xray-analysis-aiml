@@ -1,11 +1,11 @@
 import argparse
+import sys
+from pathlib import Path
+
 import cv2
 import numpy as np
 import torch
 import torchxrayvision as xrv
-from pathlib import Path
-import sys
-
 
 # ---------------------------------------------------------
 # Simple Language Explanations for Patients
@@ -15,38 +15,37 @@ DISEASE_EXPLANATIONS = {
     "Pneumothorax": {
         "simple": "Air may be trapped around the lung, which can partially collapse it.",
         "symptoms": "Chest pain and shortness of breath.",
-        "advice": "Seek medical attention immediately."
+        "advice": "Seek medical attention immediately.",
     },
     "Fracture": {
         "simple": "There may be a broken rib or bone in the chest area.",
         "symptoms": "Pain while breathing or moving.",
-        "advice": "Consult a doctor for evaluation."
+        "advice": "Consult a doctor for evaluation.",
     },
     "Pneumonia": {
         "simple": "Possible infection in the lungs.",
         "symptoms": "Fever, cough, breathing difficulty.",
-        "advice": "Medical consultation recommended."
+        "advice": "Medical consultation recommended.",
     },
     "Cardiomegaly": {
         "simple": "The heart may appear enlarged.",
         "symptoms": "Fatigue, shortness of breath.",
-        "advice": "Consult a cardiologist."
+        "advice": "Consult a cardiologist.",
     },
     "Atelectasis": {
         "simple": "Part of the lung may not be fully expanded.",
         "symptoms": "Breathing discomfort.",
-        "advice": "Medical consultation recommended."
+        "advice": "Medical consultation recommended.",
     },
     "Effusion": {
         "simple": "Fluid may be collected around the lungs.",
         "symptoms": "Breathing difficulty or chest heaviness.",
-        "advice": "Doctor evaluation recommended."
-    }
+        "advice": "Doctor evaluation recommended.",
+    },
 }
 
 
 class XRayInferenceEngine:
-
     def __init__(self, device=None):
         self.device = device or self._get_device()
         self.model = None
@@ -69,7 +68,7 @@ class XRayInferenceEngine:
             self.model = self.model.to(self.device)
             self.model.eval()
             self.pathologies = self.model.pathologies
-            print(f"[INFO] Model loaded successfully.")
+            print("[INFO] Model loaded successfully.")
         except Exception as e:
             print(f"[ERROR] Model loading failed: {e}")
             raise
@@ -87,7 +86,7 @@ class XRayInferenceEngine:
             min_dim = min(h, w)
             start_h = (h - min_dim) // 2
             start_w = (w - min_dim) // 2
-            img = img[start_h:start_h + min_dim, start_w:start_w + min_dim]
+            img = img[start_h : start_h + min_dim, start_w : start_w + min_dim]
 
             img = cv2.resize(img, (target_size, target_size))
 
@@ -111,13 +110,10 @@ class XRayInferenceEngine:
 
         probabilities = torch.sigmoid(outputs).cpu().numpy()[0]
 
-        predictions = list(zip(self.pathologies, probabilities))
+        predictions = list(zip(self.pathologies, probabilities, strict=False))
         predictions_sorted = sorted(predictions, key=lambda x: x[1], reverse=True)
 
-        return {
-            "all_predictions": predictions_sorted,
-            "top_predictions": predictions_sorted[:top_k]
-        }
+        return {"all_predictions": predictions_sorted, "top_predictions": predictions_sorted[:top_k]}
 
     def format_results(self, results):
         print("\n" + "=" * 70)
@@ -137,11 +133,7 @@ class XRayInferenceEngine:
         report.append("AI-BASED CHEST X-RAY EXPLANATION (Patient Friendly)")
         report.append("=" * 70 + "\n")
 
-        concerning = [
-            (disease, prob)
-            for disease, prob in results["top_predictions"]
-            if prob >= threshold
-        ]
+        concerning = [(disease, prob) for disease, prob in results["top_predictions"] if prob >= threshold]
 
         if not concerning:
             report.append("No strong abnormal signs detected by AI.\n")
@@ -150,7 +142,7 @@ class XRayInferenceEngine:
 
             for disease, prob in concerning:
                 explanation = DISEASE_EXPLANATIONS.get(disease)
-                report.append(f"• {disease} ({prob*100:.1f}% confidence)")
+                report.append(f"• {disease} ({prob * 100:.1f}% confidence)")
 
                 if explanation:
                     report.append(f"  What it means: {explanation['simple']}")
