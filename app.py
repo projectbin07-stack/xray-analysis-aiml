@@ -1,174 +1,145 @@
-import shutil
+"""FastAPI dashboard around a pretrained TorchXRayVision chest X-ray classifier."""
+
+from __future__ import annotations
+
+import logging
+import os
 import uuid
+from pathlib import Path
+
 import requests
-from fastapi import FastAPI, File, UploadFile, Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import FastAPI, File, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
-from core.xray_engine import XRayInferenceEngine
 
-# -----------------------------------
-# INIT APP
-# -----------------------------------
-app = FastAPI()
+from core.report import (
+    FALLBACK_EXPLANATION,
+    build_predictions,
+    describe_for_prompt,
+    overall_status,
+    parse_report,
+)
 
-UPLOAD_DIR = Path("static/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+logger = logging.getLogger("xray-analysis")
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = BASE_DIR / "uploads"  # outside static/: uploads are never served back
+UPLOAD_DIR.mkdir(exist_ok=True)
 
-# -----------------------------------
-# LOAD MODEL ONCE
-# -----------------------------------
-engine = XRayInferenceEngine()
-engine.load_model()
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 
-# -----------------------------------
-# STATIC + TEMPLATE SETUP
-# -----------------------------------
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
+OLLAMA_TIMEOUT_S = float(os.getenv("OLLAMA_TIMEOUT_S", "15"))
 
-# -----------------------------------
-# OLLAMA HUMAN REPORT
-# -----------------------------------
-def generate_human_report(predictions):
+app = FastAPI(title="Chest X-ray Analysis (research prototype)")
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+_engine = None
+
+
+def get_engine():
+    """Load the model on first use so the app (and its tests) can start without PyTorch."""
+    global _engine
+    if _engine is None:
+        from core.xray_engine import XRayInferenceEngine
+
+        engine = XRayInferenceEngine()
+        engine.load_model()
+        _engine = engine
+    return _engine
+
+
+def generate_human_report(predictions) -> dict[str, str]:
+    """Ask a local Ollama model for a plain-language explanation; fixed wording on failure."""
+    prompt = f"""
+    You are explaining the output of an experimental chest X-ray classifier.
+    It is not a medical device and its scores are not a diagnosis. Do not diagnose.
+
+    Rewrite this for a non-specialist:
+
+    Model scores: {describe_for_prompt(predictions)}
+
+    Format:
+    Summary:
+    Meaning:
+    Recommendation:
+
+    Keep it short and always recommend review by a clinician.
+    """
     try:
-        significant = [p for p in predictions if p[1] > 0.1][:3]
-
-        if not significant:
-            diseases_str = "No major abnormalities detected"
-        else:
-            diseases_str = ", ".join(
-                [f"{d} ({p*100:.1f}%)" for d, p in significant]
-            )
-
-        prompt = f"""
-        You are a medical assistant AI.
-
-        Convert this into simple patient-friendly explanation:
-
-        Predictions: {diseases_str}
-
-        Format:
-        Summary:
-        Meaning:
-        Recommendation:
-
-        Keep it short and clear.
-        """
-
         response = requests.post(
             OLLAMA_URL,
-            json={
-                "model": "llama3",
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=15
+            json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},
+            timeout=OLLAMA_TIMEOUT_S,
         )
-
         if response.status_code == 200:
-            text = response.json().get("response", "")
+            return parse_report(response.json().get("response", ""))
+    except (requests.RequestException, ValueError) as exc:
+        logger.info("Ollama unavailable (%s); using fixed explanation.", exc)
+    return dict(FALLBACK_EXPLANATION)
 
-            result = {
-                "summary": "N/A",
-                "meaning": "N/A",
-                "recommendation": "N/A"
-            }
 
-            for line in text.split("\n"):
-                line = line.strip()
-
-                if line.lower().startswith("summary"):
-                    result["summary"] = line.split(":", 1)[1].strip()
-                elif line.lower().startswith("meaning"):
-                    result["meaning"] = line.split(":", 1)[1].strip()
-                elif line.lower().startswith("recommendation"):
-                    result["recommendation"] = line.split(":", 1)[1].strip()
-
-            return result
-
-    except Exception as e:
-        print("[OLLAMA ERROR]", e)
-
-    return {
-        "summary": "AI detected patterns in the X-ray.",
-        "meaning": "Some areas may require medical attention.",
-        "recommendation": "Consult a healthcare professional."
-    }
-
-# -----------------------------------
-# ROUTES
-# -----------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok", "model_loaded": _engine is not None}
+
+
+def _error(status: int, message: str) -> JSONResponse:
+    return JSONResponse(status_code=status, content={"error": message})
+
+
 @app.post("/analyze")
 async def analyze(image: UploadFile = File(...)):
+    # Only the extension is taken from the client filename, and only if whitelisted.
+    ext = Path(image.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return _error(400, "Unsupported file type. Use JPG, PNG or BMP.")
+
+    payload = await image.read(MAX_UPLOAD_BYTES + 1)
+    if len(payload) > MAX_UPLOAD_BYTES:
+        return _error(413, "File too large.")
+    if not payload:
+        return _error(400, "Empty file.")
+
+    file_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{ext}"
+    file_path.write_bytes(payload)
+
     try:
-        # SAVE IMAGE
-        ext = Path(image.filename).suffix
-        filename = f"{uuid.uuid4()}{ext}"
-        file_path = UPLOAD_DIR / filename
+        try:
+            results = get_engine().predict(file_path, top_k=5)
+        except FileNotFoundError:
+            return _error(400, "File is not a readable image.")
 
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-
-        # RUN MODEL
-        results = engine.predict(file_path, top_k=5)
-
-        predictions = []
-        labels = []
-        scores = []
-
-        for disease, prob in results["top_predictions"]:
-            risk = (
-                "HIGH" if prob > 0.7 else
-                "MODERATE" if prob > 0.4 else
-                "LOW"
-            )
-
-            predictions.append({
-                "disease": disease,
-                "confidence": round(prob * 100, 2),
-                "risk": risk
-            })
-
-            labels.append(disease)
-            scores.append(round(prob * 100, 2))
-
-        # STATUS
-        top_prob = results["top_predictions"][0][1]
-
-        status = (
-            "CRITICAL" if top_prob > 0.7 else
-            "NEEDS ATTENTION" if top_prob > 0.4 else
-            "NORMAL"
-        )
-
-        # OLLAMA
-        explanation = generate_human_report(results["top_predictions"])
+        top = results["top_predictions"]
+        predictions = build_predictions(top)
 
         return {
-            "image_url": f"/static/uploads/{filename}",
             "predictions": predictions,
-            "status": status,
-            "explanation": explanation,
-            "confidence_scores": scores,
-            "labels": labels
+            "status": overall_status(top),
+            "explanation": generate_human_report(top),
+            "confidence_scores": [p["confidence"] for p in predictions],
+            "labels": [p["disease"] for p in predictions],
         }
+    except Exception:
+        logger.exception("Analysis failed")
+        return _error(500, "Internal analysis error.")
+    finally:
+        # X-ray images are sensitive: never keep an upload after the request.
+        file_path.unlink(missing_ok=True)
 
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
 
-
-# -----------------------------------
-# RUN
-# -----------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+
+    # Binds to localhost by default; set HOST=0.0.0.0 to expose on the network.
+    uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8001")))
