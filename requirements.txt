@@ -1,9 +1,12 @@
-fastapi
-uvicorn
-torch
-torchxrayvision
-opencv-python
-numpy
-requests
-python-multipart
-jinja2
+# Web application
+fastapi>=0.115,<1.0
+uvicorn>=0.30,<1.0
+python-multipart>=0.0.9
+jinja2>=3.1,<4.0
+requests>=2.32,<3.0
+
+# Model inference
+torch>=2.2
+torchxrayvision>=1.2,<2.0
+opencv-python-headless>=4.9,<5.0
+numpy>=1.26,<3.0

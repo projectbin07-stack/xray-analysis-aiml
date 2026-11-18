@@ -8,3 +8,7 @@ static/uploads/*
 *.log
 .env
 venv/
+
+uploads/
+.pytest_cache/
+.ruff_cache/
