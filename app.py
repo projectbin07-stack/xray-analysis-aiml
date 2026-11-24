@@ -69,7 +69,9 @@ def generate_human_report(predictions) -> dict[str, str]:
     Meaning:
     Recommendation:
 
-    Keep it short and always recommend review by a clinician.
+    Scores are normalised so that 50% is the model's own operating threshold.
+    Keep it short. Do not give medical advice or tell the reader what to do; under
+    Recommendation, say only that the scores are not a diagnosis.
     """
     try:
         response = requests.post(

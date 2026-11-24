@@ -107,22 +107,21 @@ function updateDashboard(data) {
     riskProgress.style.width = riskScore + '%';
 
     metricsPanel.classList.remove('critical', 'attention', 'normal');
-    if (data.status === 'CRITICAL') {
+    if (data.status === 'HIGH SCORE') {
         metricsPanel.classList.add('critical');
-        riskExplanation.innerText = "The highest model score is above 70%. This is a model output, not a diagnosis: a qualified clinician must review the image.";
-    } else if (data.status === 'NEEDS ATTENTION') {
+        riskExplanation.innerText = "The highest model score is above 70%. This is a model output, not a diagnosis.";
+    } else if (data.status === 'ELEVATED SCORE') {
         metricsPanel.classList.add('attention');
-        riskExplanation.innerText = "The highest model score is between 40% and 70%. This is a model output, not a diagnosis.";
+        riskExplanation.innerText = "The highest model score is at or above 50%, the model's operating threshold. This is a model output, not a diagnosis.";
     } else {
         metricsPanel.classList.add('normal');
-        riskExplanation.innerText = "No pathology score is above 40%. This does not rule out disease.";
+        riskExplanation.innerText = "No pathology score is at or above 50%, the model's operating threshold. This does not rule out disease.";
     }
 
     // Analytics Card
     document.getElementById('dominantCond').innerText = topPred.disease;
-    document.getElementById('confConsistency').innerText = riskScore > 85 ? "High" : riskScore > 60 ? "Moderate" : "Low";
-    document.getElementById('mAbnormality').innerText = (riskScore / 10).toFixed(1);
-    document.getElementById('aSummaryText').innerText = `Highest model score: ${topPred.disease} at ${riskScore}%. Scores are uncalibrated outputs of a pretrained model.`;
+    document.getElementById('aboveCount').innerText = data.predictions.filter(p => p.confidence >= 50).length;
+    document.getElementById('aSummaryText').innerText = `Highest model score: ${topPred.disease} at ${riskScore}%. Scores are uncalibrated outputs of a pretrained model; 50% is its operating threshold.`;
 
     // Predictions List & Chart
     updatePredictionsUI(data);
@@ -156,7 +155,7 @@ function updatePredictionsUI(data) {
 
 function getBarColor(score) {
     if (score > 70) return '#f85149';
-    if (score > 40) return '#d29922';
+    if (score >= 50) return '#d29922';
     return '#2f81f7';
 }
 
