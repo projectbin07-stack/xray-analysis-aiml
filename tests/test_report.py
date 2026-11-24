@@ -12,17 +12,33 @@ from core.report import (
 
 @pytest.mark.parametrize(
     ("prob", "expected"),
-    [(0.0, "LOW"), (0.4, "LOW"), (0.41, "MODERATE"), (0.7, "MODERATE"), (0.71, "HIGH"), (1.0, "HIGH")],
+    [
+        (0.0, "LOW"),
+        (0.45, "LOW"),
+        (0.499, "LOW"),
+        (0.5, "MODERATE"),  # 0.5 = raw probability at the model's operating point
+        (0.7, "MODERATE"),
+        (0.71, "HIGH"),
+        (1.0, "HIGH"),
+    ],
 )
 def test_risk_level_boundaries(prob, expected):
     assert risk_level(prob) == expected
 
 
 def test_overall_status_uses_highest_score():
-    assert overall_status([("A", 0.2), ("B", 0.1)]) == "NORMAL"
-    assert overall_status([("A", 0.5), ("B", 0.1)]) == "NEEDS ATTENTION"
-    assert overall_status([("A", 0.1), ("B", 0.9)]) == "CRITICAL"
-    assert overall_status([]) == "NORMAL"
+    assert overall_status([("A", 0.2), ("B", 0.1)]) == "NO ELEVATED SCORE"
+    assert overall_status([("A", 0.45), ("B", 0.1)]) == "NO ELEVATED SCORE"
+    assert overall_status([("A", 0.5), ("B", 0.1)]) == "ELEVATED SCORE"
+    assert overall_status([("A", 0.1), ("B", 0.9)]) == "HIGH SCORE"
+    assert overall_status([]) == "NO ELEVATED SCORE"
+
+
+def test_statuses_and_fallback_text_are_not_clinical_directives():
+    words = " ".join([*FALLBACK_EXPLANATION.values(), "HIGH SCORE ELEVATED SCORE NO ELEVATED SCORE"])
+    for phrase in ("critical", "normal", "attention", "immediately", "consult", "seek"):
+        assert phrase not in words.lower()
+    assert "not a diagnosis" in FALLBACK_EXPLANATION["recommendation"]
 
 
 def test_build_predictions_rounds_to_percent():

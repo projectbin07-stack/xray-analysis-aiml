@@ -7,41 +7,21 @@ import numpy as np
 import torch
 import torchxrayvision as xrv
 
-# ---------------------------------------------------------
-# Simple Language Explanations for Patients
-# ---------------------------------------------------------
+from core.report import OPERATING_POINT, risk_level
 
-DISEASE_EXPLANATIONS = {
-    "Pneumothorax": {
-        "simple": "Air may be trapped around the lung, which can partially collapse it.",
-        "symptoms": "Chest pain and shortness of breath.",
-        "advice": "Seek medical attention immediately.",
-    },
-    "Fracture": {
-        "simple": "There may be a broken rib or bone in the chest area.",
-        "symptoms": "Pain while breathing or moving.",
-        "advice": "Consult a doctor for evaluation.",
-    },
-    "Pneumonia": {
-        "simple": "Possible infection in the lungs.",
-        "symptoms": "Fever, cough, breathing difficulty.",
-        "advice": "Medical consultation recommended.",
-    },
-    "Cardiomegaly": {
-        "simple": "The heart may appear enlarged.",
-        "symptoms": "Fatigue, shortness of breath.",
-        "advice": "Consult a cardiologist.",
-    },
-    "Atelectasis": {
-        "simple": "Part of the lung may not be fully expanded.",
-        "symptoms": "Breathing discomfort.",
-        "advice": "Medical consultation recommended.",
-    },
-    "Effusion": {
-        "simple": "Fluid may be collected around the lungs.",
-        "symptoms": "Breathing difficulty or chest heaviness.",
-        "advice": "Doctor evaluation recommended.",
-    },
+# ---------------------------------------------------------
+# Plain-language descriptions of the label names
+# ---------------------------------------------------------
+# These explain what each label *refers to*. They are not findings about the image
+# and deliberately contain no advice: the model output is not a diagnosis.
+
+LABEL_DESCRIPTIONS = {
+    "Pneumothorax": "Label for air in the space around the lung.",
+    "Fracture": "Label for a break in a rib or other bone visible on the image.",
+    "Pneumonia": "Label for lung opacity of the kind associated with infection.",
+    "Cardiomegaly": "Label for an enlarged heart silhouette.",
+    "Atelectasis": "Label for part of a lung that is not fully expanded.",
+    "Effusion": "Label for fluid in the space around the lung.",
 }
 
 
@@ -108,7 +88,11 @@ class XRayInferenceEngine:
         with torch.no_grad():
             outputs = self.model(image_tensor)
 
-        probabilities = torch.sigmoid(outputs).cpu().numpy()[0]
+        # torchxrayvision's pretrained DenseNet already returns
+        # op_norm(sigmoid(logits), op_threshs): scores in [0, 1], with 0.5 at each
+        # pathology's operating point. Do NOT apply another sigmoid (v0.1.0 did, which
+        # squeezed every score into 50-73 %).
+        probabilities = outputs.cpu().numpy()[0]
 
         predictions = list(zip(self.pathologies, probabilities, strict=False))
         predictions_sorted = sorted(predictions, key=lambda x: x[1], reverse=True)
@@ -121,47 +105,52 @@ class XRayInferenceEngine:
         print("=" * 70)
 
         for disease, probability in results["top_predictions"]:
-            confidence_pct = probability * 100
-            risk = "HIGH" if probability > 0.7 else "MODERATE" if probability > 0.4 else "LOW"
-            print(f"{disease:<30} {confidence_pct:>6.2f}%   [{risk}]")
+            print(f"{disease:<30} {probability * 100:>6.2f}%   [{risk_level(float(probability))}]")
 
         print("=" * 70 + "\n")
 
-    def generate_patient_report(self, results, threshold=0.5):
-        report = []
-        report.append("=" * 70)
-        report.append("AI-BASED CHEST X-RAY EXPLANATION (Patient Friendly)")
-        report.append("=" * 70 + "\n")
+    def generate_plain_report(self, results, threshold=OPERATING_POINT):
+        """Plain-language listing of the scores at or above ``threshold``.
 
-        concerning = [(disease, prob) for disease, prob in results["top_predictions"] if prob >= threshold]
+        It describes model output only; it gives no medical advice.
+        """
+        lines = [
+            "=" * 70,
+            "MODEL OUTPUT IN PLAIN LANGUAGE (research prototype)",
+            "=" * 70,
+            "",
+        ]
+        flagged = [(disease, prob) for disease, prob in results["top_predictions"] if prob >= threshold]
 
-        if not concerning:
-            report.append("No strong abnormal signs detected by AI.\n")
+        if not flagged:
+            lines.append(f"No pathology score is at or above {threshold * 100:.0f}%.")
+            lines.append("This does not mean the image is normal.")
         else:
-            report.append("The AI detected possible signs of:\n")
+            lines.append(f"Pathology scores at or above {threshold * 100:.0f}%:")
+            lines.append("")
+            for disease, prob in flagged:
+                lines.append(f"- {disease}: score {prob * 100:.1f}%")
+                description = LABEL_DESCRIPTIONS.get(disease)
+                if description:
+                    lines.append(f"  {description}")
 
-            for disease, prob in concerning:
-                explanation = DISEASE_EXPLANATIONS.get(disease)
-                report.append(f"• {disease} ({prob * 100:.1f}% confidence)")
-
-                if explanation:
-                    report.append(f"  What it means: {explanation['simple']}")
-                    report.append(f"  Possible symptoms: {explanation['symptoms']}")
-                    report.append(f"  Recommendation: {explanation['advice']}\n")
-                else:
-                    report.append("  Medical evaluation recommended.\n")
-
-        report.append("IMPORTANT:")
-        report.append("This AI system does NOT provide a medical diagnosis.")
-        report.append("Please consult a qualified healthcare professional.\n")
-        report.append("=" * 70)
-
-        return "\n".join(report)
+        lines += [
+            "",
+            "IMPORTANT:",
+            "Research and educational software, not a medical device.",
+            "These scores are model outputs, not a diagnosis, and must not be used",
+            "for diagnosis or treatment decisions.",
+            "",
+            "=" * 70,
+        ]
+        return "\n".join(lines)
 
 
 def main():
 
-    parser = argparse.ArgumentParser(description="Chest X-Ray AI Explanation Tool")
+    parser = argparse.ArgumentParser(
+        description="Chest X-ray classifier scores (research prototype, not a medical device)"
+    )
 
     parser.add_argument("--image", type=str, required=True, help="Path to X-ray image")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"])
@@ -184,8 +173,7 @@ def main():
 
         engine.format_results(results)
 
-        patient_report = engine.generate_patient_report(results)
-        print(patient_report)
+        print(engine.generate_plain_report(results))
 
     except Exception as e:
         print(f"Fatal Error: {e}")

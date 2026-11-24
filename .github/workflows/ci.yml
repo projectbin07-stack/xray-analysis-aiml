@@ -26,3 +26,22 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+
+  # Runs the inference wrapper with real PyTorch and TorchXRayVision: the model-output
+  # contract tests plus the pretrained weights on TorchXRayVision's public NIH sample.
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r requirements.txt pytest httpx
+      - name: Download public sample image (NIH ChestX-ray14, from TorchXRayVision's tests)
+        run: >
+          curl -sSfL -o "$RUNNER_TEMP/00000001_000.png"
+          https://raw.githubusercontent.com/mlmed/torchxrayvision/6fa28a2fbfb1b30fcb5f8f501626d91177ef593c/tests/00000001_000.png
+      - run: pytest -q -rs tests/test_engine.py
+        env:
+          XRAY_SAMPLE_IMAGE: ${{ runner.temp }}/00000001_000.png

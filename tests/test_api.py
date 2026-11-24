@@ -8,7 +8,12 @@ IMAGE_BYTES = b"stand-in bytes; the fake engine never decodes them"
 
 
 class FakeEngine:
-    """Stands in for the PyTorch model; records what it was asked to read."""
+    """Stands in for XRayInferenceEngine; records what it was asked to read.
+
+    Scores are what the engine returns: torchxrayvision's DenseNet output, already in
+    [0, 1] with 0.5 at each pathology's operating point (no further sigmoid).
+    tests/test_engine.py checks the real engine against that contract.
+    """
 
     def __init__(self, scores):
         self.scores = scores
@@ -45,6 +50,9 @@ def test_home_page_has_no_performance_or_certification_claims(client):
     assert "not a medical device" in page
     assert "certified" not in page
     assert "confusion matrix" not in page
+    # No derived "abnormality" index and no advice panel.
+    assert "abnormality" not in page
+    assert "recommended action" not in page
 
 
 def test_health_reports_model_not_loaded_before_first_use(client):
@@ -55,12 +63,20 @@ def test_analyze_shapes_response_from_model_scores(client):
     r = client.post("/analyze", files={"image": ("scan.png", IMAGE_BYTES, "image/png")})
     assert r.status_code == 200
     body = r.json()
-    assert body["status"] == "CRITICAL"
+    assert body["status"] == "HIGH SCORE"
     assert body["labels"] == ["Effusion", "Pneumonia", "Mass"]
     assert body["confidence_scores"] == [82.0, 45.0, 3.0]
-    assert [p["risk"] for p in body["predictions"]] == ["HIGH", "MODERATE", "LOW"]
+    assert [p["risk"] for p in body["predictions"]] == ["HIGH", "LOW", "LOW"]
     assert body["explanation"] == app_module.FALLBACK_EXPLANATION
     assert "image_url" not in body
+
+
+def test_low_scores_are_reported_low_not_near_fifty_percent(client, engine):
+    engine.scores = [("Effusion", 0.004), ("Pneumonia", 0.001), ("Mass", 0.0002)]
+    body = client.post("/analyze", files={"image": ("scan.png", IMAGE_BYTES, "image/png")}).json()
+    assert body["confidence_scores"] == [0.4, 0.1, 0.02]
+    assert body["status"] == "NO ELEVATED SCORE"
+    assert {p["risk"] for p in body["predictions"]} == {"LOW"}
 
 
 def test_upload_is_deleted_and_never_stored_under_static(client, engine):

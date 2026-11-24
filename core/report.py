@@ -2,46 +2,55 @@
 
 Kept free of PyTorch imports so it can be unit-tested on its own.
 
-The thresholds below are presentation bands chosen by the author. They are not
-calibrated operating points and carry no clinical meaning.
+Scores are the outputs of torchxrayvision's pretrained DenseNet, which applies its own
+sigmoid and then ``op_norm``: a score of 0.5 means the raw probability equals that
+pathology's operating-point threshold, below 0.5 it is under the threshold and above 0.5
+over it. The bands below are display choices built on that: they are not calibrated
+probabilities and carry no clinical meaning.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
+OPERATING_POINT = 0.5
 HIGH_THRESHOLD = 0.7
-MODERATE_THRESHOLD = 0.4
+MODERATE_THRESHOLD = OPERATING_POINT
 REPORT_MIN_PROBABILITY = 0.1
+
+STATUS_HIGH = "HIGH SCORE"
+STATUS_ELEVATED = "ELEVATED SCORE"
+STATUS_NONE = "NO ELEVATED SCORE"
 
 Prediction = tuple[str, float]
 
 FALLBACK_EXPLANATION = {
     "summary": "The model produced pathology scores for this image.",
     "meaning": "These are uncalibrated outputs of a pretrained research model, not findings.",
-    "recommendation": "This is not a diagnosis. Consult a qualified healthcare professional.",
+    "recommendation": "No recommendation is given: this is research software, not a medical "
+    "device, and its scores are not a diagnosis.",
 }
 
 
 def risk_level(probability: float) -> str:
-    """Band a single score into HIGH / MODERATE / LOW."""
+    """Display band for one score: HIGH (> 0.7), MODERATE (>= 0.5, the operating point), LOW."""
     if probability > HIGH_THRESHOLD:
         return "HIGH"
-    if probability > MODERATE_THRESHOLD:
+    if probability >= MODERATE_THRESHOLD:
         return "MODERATE"
     return "LOW"
 
 
 def overall_status(predictions: Sequence[Prediction]) -> str:
-    """Status label driven by the highest score."""
+    """Status label driven by the highest score. It describes the score, not the patient."""
     if not predictions:
-        return "NORMAL"
+        return STATUS_NONE
     top = max(float(p) for _, p in predictions)
     if top > HIGH_THRESHOLD:
-        return "CRITICAL"
-    if top > MODERATE_THRESHOLD:
-        return "NEEDS ATTENTION"
-    return "NORMAL"
+        return STATUS_HIGH
+    if top >= MODERATE_THRESHOLD:
+        return STATUS_ELEVATED
+    return STATUS_NONE
 
 
 def build_predictions(predictions: Sequence[Prediction]) -> list[dict]:
